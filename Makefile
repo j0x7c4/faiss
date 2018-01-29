@@ -29,7 +29,7 @@ LIBOBJ=hamming.o  utils.o \
        Clustering.o Heap.o VectorTransform.o index_io.o \
        PolysemousTraining.o MetaIndexes.o Index.o \
        ProductQuantizer.o AutoTune.o AuxIndexStructures.o \
-       IndexScalarQuantizer.o FaissException.o
+       IndexScalarQuantizer.o FaissException.o IndexHNSW.o
 
 
 $(LIBNAME).a: $(LIBOBJ)
@@ -44,6 +44,7 @@ $(LIBNAME).$(SHAREDEXT): $(LIBOBJ)
 utils.o:             EXTRAFLAGS=$(BLASCFLAGS)
 VectorTransform.o:   EXTRAFLAGS=$(BLASCFLAGS)
 ProductQuantizer.o:  EXTRAFLAGS=$(BLASCFLAGS)
+IndexHNSW.o:         EXTRAFLAGS=$(BLASCFLAGS)
 
 # for MKL, the flags when generating a dynamic lib are different from
 # the ones when making an executable, but by default they are the same
@@ -55,7 +56,7 @@ BLASLDFLAGSSO ?= $(BLASLDFLAGS)
 # pure C++ test in the test directory
 
 tests/test_blas: tests/test_blas.cpp
-	$(CC) $(CFLAGS) $< -o $@ $(BLASLDFLAGS) $(BLASCFLAGS)
+	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS) $(BLASLDFLAGS) $(BLASCFLAGS)
 
 
 tests/demo_ivfpq_indexing: tests/demo_ivfpq_indexing.cpp $(LIBNAME).a
@@ -87,54 +88,63 @@ _swigfaiss.so: python/_swigfaiss.so
 	cp python/_swigfaiss.so python/swigfaiss.py .
 
 #############################
-# Dependencies
+# Dependencies.
+# make dep > x
+# then copy/paste from x by hand below
 
-# for i in *.cpp ; do g++ -std=c++11 -I.. -MM $i -msse4; done
+dep:
+	for i in $(patsubst %.o,%.cpp,$(LIBOBJ)) ; do \
+	   cpp -MM -std=gnu++0x $$i ; \
+	done
 
-AutoTune.o: AutoTune.cpp AutoTune.h Index.h FaissAssert.h \
- FaissException.h utils.h Heap.h IndexFlat.h VectorTransform.h IndexLSH.h \
- IndexPQ.h ProductQuantizer.h Clustering.h PolysemousTraining.h \
- IndexIVF.h IndexIVFPQ.h MetaIndexes.h IndexScalarQuantizer.h
-AuxIndexStructures.o: AuxIndexStructures.cpp AuxIndexStructures.h Index.h
-Clustering.o: Clustering.cpp Clustering.h Index.h utils.h Heap.h \
- FaissAssert.h FaissException.h IndexFlat.h
-FaissException.o: FaissException.cpp FaissException.h
 hamming.o: hamming.cpp hamming.h Heap.h FaissAssert.h FaissException.h
-Heap.o: Heap.cpp Heap.h
-Index.o: Index.cpp IndexFlat.h Index.h FaissAssert.h FaissException.h
+utils.o: utils.cpp utils.h Heap.h AuxIndexStructures.h Index.h \
+ FaissAssert.h FaissException.h
 IndexFlat.o: IndexFlat.cpp IndexFlat.h Index.h utils.h Heap.h \
  FaissAssert.h FaissException.h AuxIndexStructures.h
-index_io.o: index_io.cpp index_io.h FaissAssert.h FaissException.h \
- IndexFlat.h Index.h VectorTransform.h IndexLSH.h IndexPQ.h \
- ProductQuantizer.h Clustering.h Heap.h PolysemousTraining.h IndexIVF.h \
- IndexIVFPQ.h MetaIndexes.h IndexScalarQuantizer.h
 IndexIVF.o: IndexIVF.cpp IndexIVF.h Index.h Clustering.h Heap.h utils.h \
  hamming.h FaissAssert.h FaissException.h IndexFlat.h \
- AuxIndexStructures.h
-IndexIVFPQ.o: IndexIVFPQ.cpp IndexIVFPQ.h IndexIVF.h Index.h Clustering.h \
- Heap.h IndexPQ.h ProductQuantizer.h PolysemousTraining.h utils.h \
- IndexFlat.h hamming.h FaissAssert.h FaissException.h \
  AuxIndexStructures.h
 IndexLSH.o: IndexLSH.cpp IndexLSH.h Index.h VectorTransform.h utils.h \
  Heap.h hamming.h FaissAssert.h FaissException.h
 IndexPQ.o: IndexPQ.cpp IndexPQ.h Index.h ProductQuantizer.h Clustering.h \
  Heap.h PolysemousTraining.h FaissAssert.h FaissException.h hamming.h
-IndexScalarQuantizer.o: IndexScalarQuantizer.cpp IndexScalarQuantizer.h \
- IndexIVF.h Index.h Clustering.h Heap.h utils.h FaissAssert.h \
- FaissException.h
-MetaIndexes.o: MetaIndexes.cpp MetaIndexes.h Index.h FaissAssert.h \
- FaissException.h Heap.h AuxIndexStructures.h
-PolysemousTraining.o: PolysemousTraining.cpp PolysemousTraining.h \
- ProductQuantizer.h Clustering.h Index.h Heap.h utils.h hamming.h \
- FaissAssert.h FaissException.h
-ProductQuantizer.o: ProductQuantizer.cpp ProductQuantizer.h Clustering.h \
- Index.h Heap.h FaissAssert.h FaissException.h VectorTransform.h \
- IndexFlat.h utils.h
-utils.o: utils.cpp utils.h Heap.h AuxIndexStructures.h Index.h \
- FaissAssert.h FaissException.h
+IndexIVFPQ.o: IndexIVFPQ.cpp IndexIVFPQ.h IndexIVF.h Index.h Clustering.h \
+ Heap.h IndexPQ.h ProductQuantizer.h PolysemousTraining.h utils.h \
+ IndexFlat.h hamming.h FaissAssert.h FaissException.h \
+ AuxIndexStructures.h
+Clustering.o: Clustering.cpp Clustering.h Index.h utils.h Heap.h \
+ FaissAssert.h FaissException.h IndexFlat.h
+Heap.o: Heap.cpp Heap.h
 VectorTransform.o: VectorTransform.cpp VectorTransform.h Index.h utils.h \
  Heap.h FaissAssert.h FaissException.h IndexPQ.h ProductQuantizer.h \
  Clustering.h PolysemousTraining.h
+index_io.o: index_io.cpp index_io.h FaissAssert.h FaissException.h \
+ IndexFlat.h Index.h VectorTransform.h IndexLSH.h IndexPQ.h \
+ ProductQuantizer.h Clustering.h Heap.h PolysemousTraining.h IndexIVF.h \
+ IndexIVFPQ.h MetaIndexes.h IndexScalarQuantizer.h IndexHNSW.h utils.h
+PolysemousTraining.o: PolysemousTraining.cpp PolysemousTraining.h \
+ ProductQuantizer.h Clustering.h Index.h Heap.h utils.h hamming.h \
+ FaissAssert.h FaissException.h
+MetaIndexes.o: MetaIndexes.cpp MetaIndexes.h Index.h FaissAssert.h \
+ FaissException.h Heap.h AuxIndexStructures.h
+Index.o: Index.cpp IndexFlat.h Index.h FaissAssert.h FaissException.h
+ProductQuantizer.o: ProductQuantizer.cpp ProductQuantizer.h Clustering.h \
+ Index.h Heap.h FaissAssert.h FaissException.h VectorTransform.h \
+ IndexFlat.h utils.h
+AutoTune.o: AutoTune.cpp AutoTune.h Index.h FaissAssert.h \
+ FaissException.h utils.h Heap.h IndexFlat.h VectorTransform.h IndexLSH.h \
+ IndexPQ.h ProductQuantizer.h Clustering.h PolysemousTraining.h \
+ IndexIVF.h IndexIVFPQ.h MetaIndexes.h IndexScalarQuantizer.h IndexHNSW.h
+AuxIndexStructures.o: AuxIndexStructures.cpp AuxIndexStructures.h Index.h
+IndexScalarQuantizer.o: IndexScalarQuantizer.cpp IndexScalarQuantizer.h \
+ IndexIVF.h Index.h Clustering.h Heap.h utils.h FaissAssert.h \
+ FaissException.h
+FaissException.o: FaissException.cpp FaissException.h
+IndexHNSW.o: IndexHNSW.cpp IndexHNSW.h IndexFlat.h Index.h IndexPQ.h \
+ ProductQuantizer.h Clustering.h Heap.h PolysemousTraining.h \
+ IndexScalarQuantizer.h IndexIVF.h utils.h FaissAssert.h FaissException.h \
+ IndexIVFPQ.h
 
 
 clean:
